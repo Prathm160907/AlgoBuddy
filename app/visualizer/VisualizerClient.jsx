@@ -3,13 +3,14 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, ChevronRight } from "lucide-react";
+import { VISUALIZER_THEMES, getVisualizerTheme } from "@/lib/visualizerThemes";
 
 /* ─── colour + icon theme per DS ─── */
 const DS_THEME = {
   Array: {
     color: "#a435f0",
     bg: "#faf5ff",
-    darkBg: "#160d22",
+    darkBg: "rgb(22, 13, 34)",
     border: "#e9d5ff",
     label: "7 algorithms",
     bars: [65, 30, 80, 45, 55, 20, 70],
@@ -22,7 +23,7 @@ const DS_THEME = {
   Stack: {
     color: "#2563eb",
     bg: "#eff6ff",
-    darkBg: "#0d1627",
+    darkBg: "rgb(13, 22, 39)",
     border: "#bfdbfe",
     label: "8 algorithms",
     stack: ["push(42)", "push(17)", "peek → 17"],
@@ -35,7 +36,7 @@ const DS_THEME = {
   Queue: {
     color: "#059669",
     bg: "#f0fdf4",
-    darkBg: "#0d1f14",
+    darkBg: "rgb(13, 31, 20)",
     border: "#d1fae5",
     label: "10 algorithms",
     icon: (c) => (
@@ -47,7 +48,7 @@ const DS_THEME = {
   "Linked List": {
     color: "#d97706",
     bg: "#fffbeb",
-    darkBg: "#1a1506",
+    darkBg: "rgb(26, 21, 6)",
     border: "#fde68a",
     label: "10 algorithms",
     icon: (c) => (
@@ -59,7 +60,7 @@ const DS_THEME = {
   Tree: {
     color: "#7c3aed",
     bg: "#faf5ff",
-    darkBg: "#160d22",
+    darkBg: "rgb(22, 13, 34)",
     border: "#e9d5ff",
     label: "20 algorithms",
     icon: (c) => (
@@ -71,7 +72,7 @@ const DS_THEME = {
   Graph: {
     color: "#dc2626",
     bg: "#fef2f2",
-    darkBg: "#1f0d0d",
+    darkBg: "rgb(31, 13, 13)",
     border: "#fecaca",
     label: "8 algorithms",
     icon: (c) => (
@@ -90,7 +91,7 @@ const getTheme = (t) =>
     ),
     color: "#6b7280",
     bg: "#f9fafb",
-    darkBg: "#111",
+    darkBg: "rgb(17, 17, 17)",
     border: "#e5e7eb",
     label: "",
   };
@@ -384,7 +385,13 @@ function DSCard({ section, theme, onClick, delay }) {
         </div>
 
         {/* card body */}
-        <div className="p-5 bg-white dark:bg-surface-900">
+        <div
+          className="p-5 bg-white dark:bg-surface-900 transition-colors duration-200"
+          style={{
+            backgroundColor: "white",
+          }}
+          data-theme-card={section.title}
+        >
           {/* icon + title */}
           <div className="flex items-center gap-3 mb-3">
             <div
@@ -394,7 +401,7 @@ function DSCard({ section, theme, onClick, delay }) {
               {theme.icon(theme.color)}
             </div>
             <div>
-              <h3 className="text-[18px] font-extrabold text-surface-900 dark:text-surface-50">
+              <h3 className="text-[18px] font-extrabold text-surface-900 ">
                 {section.title}
               </h3>
               <p className="text-[12px] text-surface-500 dark:text-surface-400 font-medium">
@@ -404,7 +411,7 @@ function DSCard({ section, theme, onClick, delay }) {
           </div>
 
           {/* description */}
-          <p className="text-[13px] text-surface-600 dark:text-surface-400 leading-relaxed mb-4">
+          <p className="text-[13px] text-surface-600 leading-relaxed mb-4">
             {section.desc}
           </p>
 
@@ -452,11 +459,12 @@ function ModuleView({ section, theme, onBack }) {
       <div
         className="rounded-2xl border p-8 sm:p-10 mb-10"
         style={{ background: theme.bg, borderColor: theme.border }}
+        data-theme-banner={section.title}
       >
         <button
           onClick={onBack}
           className="inline-flex items-center gap-2 text-[13px] font-bold text-surface-500 dark:text-surface-400
-            hover:text-surface-900 dark:hover:text-white transition-colors duration-200 mb-5"
+            hover:text-surface-900 dark:hover:text-surface-600 transition-colors duration-200 mb-5"
         >
           <ArrowLeft className="w-4 h-4" /> Back to all topics
         </button>
@@ -470,11 +478,11 @@ function ModuleView({ section, theme, onBack }) {
           </div>
           <div>
             <h2
-              className="text-[2rem] sm:text-[2.8rem] font-black leading-[1.1] tracking-tighter text-surface-900 dark:text-surface-50"
+              className="text-[2rem] sm:text-[2.8rem] font-black leading-[1.1] tracking-tighter text-surface-900 "
             >
               {section.title}
             </h2>
-            <p className="text-[14px] text-surface-600 dark:text-surface-400 mt-1">
+            <p className="text-[14px] text-surface-600 mt-1">
               {count} algorithm{count !== 1 ? "s" : ""} · {section.desc}
             </p>
           </div>
@@ -587,6 +595,53 @@ export default function VisualizerClient({ initialSections }) {
 
   return (
     <div>
+      <style>{`
+        /* Dark mode gradient backgrounds for visualizer cards */
+        .dark [data-theme-card="Array"] { 
+          background: linear-gradient(135deg, rgba(109, 40, 217, 0.2) 0%, rgba(168, 85, 247, 0.08) 100%);
+        }
+        .dark [data-theme-card="Stack"] { 
+          background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(96, 165, 250, 0.08) 100%);
+        }
+        .dark [data-theme-card="Queue"] { 
+          background: linear-gradient(135deg, rgba(5, 150, 105, 0.2) 0%, rgba(52, 211, 153, 0.08) 100%);
+        }
+        .dark [data-theme-card="Linked List"] { 
+          background: linear-gradient(135deg, rgba(217, 119, 6, 0.2) 0%, rgba(251, 146, 60, 0.08) 100%);
+        }
+        .dark [data-theme-card="Tree"] { 
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(168, 85, 247, 0.08) 100%);
+        }
+        .dark [data-theme-card="Graph"] { 
+          background: linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(248, 113, 113, 0.08) 100%);
+        }
+        
+        /* Dark mode gradient backgrounds for module view hero banners */
+        .dark [data-theme-banner="Array"] { 
+          background: linear-gradient(135deg, rgba(109, 40, 217, 0.15) 0%, rgba(168, 85, 247, 0.05) 100%);
+          border-color: rgba(168, 85, 247, 0.3);
+        }
+        .dark [data-theme-banner="Stack"] { 
+          background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(96, 165, 250, 0.05) 100%);
+          border-color: rgba(96, 165, 250, 0.3);
+        }
+        .dark [data-theme-banner="Queue"] { 
+          background: linear-gradient(135deg, rgba(5, 150, 105, 0.15) 0%, rgba(52, 211, 153, 0.05) 100%);
+          border-color: rgba(52, 211, 153, 0.3);
+        }
+        .dark [data-theme-banner="Linked List"] { 
+          background: linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(251, 146, 60, 0.05) 100%);
+          border-color: rgba(251, 146, 60, 0.3);
+        }
+        .dark [data-theme-banner="Tree"] { 
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(168, 85, 247, 0.05) 100%);
+          border-color: rgba(168, 85, 247, 0.3);
+        }
+        .dark [data-theme-banner="Graph"] { 
+          background: linear-gradient(135deg, rgba(220, 38, 38, 0.15) 0%, rgba(248, 113, 113, 0.05) 100%);
+          border-color: rgba(248, 113, 113, 0.3);
+        }
+      `}</style>
       {/* ═══════ CONTENT AREA ═══════ */}
       <section
         className="px-5 pt-28 pb-20 min-h-screen bg-gradient-to-b from-white via-surface-50 to-purple-50/40 dark:from-surface-900 dark:via-surface-900 dark:to-surface-900"
