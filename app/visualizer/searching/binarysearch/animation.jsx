@@ -14,7 +14,9 @@ const BinarySearch = () => {
   const [foundIndex, setFoundIndex] = useState(-1);
   const [isAnimating, setIsAnimating] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState(""); // FIX: "success" | "error" | "warning"
   const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(1);
   const animationRef = useRef(null);
   const searchStateRef = useRef({ l: 0, h: 0, arr: [], targetValue: 0 });
   const formRef = useRef(null);
@@ -28,6 +30,7 @@ const BinarySearch = () => {
     setMid(-1);
     setFoundIndex(-1);
     setMessage("");
+    setMessageType(""); // FIX: reset message type
     setIsAnimating(false);
     setArrayElements("");
     setTarget("");
@@ -46,7 +49,7 @@ const BinarySearch = () => {
 
   const generateRandomArray = () => {
     if (isAnimating) return;
-    const size = Math.floor(Math.random() * 4) + 2; // Random size between 2 and 5
+    const size = Math.floor(Math.random() * 4) + 2;
     const elements = Array.from({ length: size }, () =>
       Math.floor(Math.random() * 100)
     ).sort((a, b) => a - b);
@@ -59,6 +62,7 @@ const BinarySearch = () => {
 
     if (!arrayElements || !target) {
       setMessage("Please fill in all fields.");
+      setMessageType("warning"); // FIX: validation error → warning
       return;
     }
 
@@ -67,6 +71,7 @@ const BinarySearch = () => {
 
     if (elements.some(isNaN) || isNaN(targetValue)) {
       setMessage("Invalid array elements or target.");
+      setMessageType("warning"); // FIX: validation error → warning
       return;
     }
 
@@ -75,6 +80,7 @@ const BinarySearch = () => {
     );
     if (!isSorted) {
       setMessage("Array must be sorted in ascending order.");
+      setMessageType("warning"); // FIX: validation error → warning
       return;
     }
 
@@ -84,6 +90,7 @@ const BinarySearch = () => {
     setMid(-1);
     setFoundIndex(-1);
     setMessage("");
+    setMessageType("");
     setIsAnimating(true);
 
     searchStateRef.current = {
@@ -98,10 +105,11 @@ const BinarySearch = () => {
 
   const animateBinarySearch = () => {
     const { l, h, arr, targetValue } = searchStateRef.current;
-    const delay = 1500 / speed;
+    const delay = 1500 / speedRef.current;
 
     if (l > h) {
       setMessage(`Element ${targetValue} not found in the array.`);
+      setMessageType("error"); // FIX: search result "not found" → red
       setIsAnimating(false);
       return;
     }
@@ -111,7 +119,6 @@ const BinarySearch = () => {
     setJ(h);
     setMid(m);
 
-    // GSAP animations for i, j, and mid
     elementRefs.current.forEach((ref, index) => {
       if (index === m) {
         gsap.to(ref, {
@@ -138,6 +145,7 @@ const BinarySearch = () => {
       if (arr[m] === targetValue) {
         setFoundIndex(m);
         setMessage(`Element ${targetValue} found at index ${m}!`);
+        setMessageType("success"); // FIX: found → green
         setIsAnimating(false);
         gsap.to(elementRefs.current[m], {
           backgroundColor: "#22C55E",
@@ -155,11 +163,19 @@ const BinarySearch = () => {
   };
 
   const increaseSpeed = () => {
-    setSpeed((prev) => Math.min(prev + 0.5, 5));
+    setSpeed((prev) => {
+      const next = Math.min(prev + 0.5, 5);
+      speedRef.current = next;
+      return next;
+    });
   };
 
   const decreaseSpeed = () => {
-    setSpeed((prev) => Math.max(prev - 0.5, 0.5));
+    setSpeed((prev) => {
+      const next = Math.max(prev - 0.5, 0.5);
+      speedRef.current = next;
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -167,6 +183,14 @@ const BinarySearch = () => {
       clearTimeout(animationRef.current);
     };
   }, []);
+
+  // FIX: derive message box classes from messageType instead of foundIndex
+  const messageClass =
+    messageType === "success"
+      ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+      : messageType === "warning"
+      ? "bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200"
+      : "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200";
 
   return (
     <main className="container mx-auto">
@@ -262,13 +286,7 @@ const BinarySearch = () => {
       </form>
 
       {message && (
-        <div
-          className={`max-w-3xl mx-auto mb-8 p-4 rounded-lg ${
-            foundIndex !== -1
-              ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
-              : "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
-          }`}
-        >
+        <div className={`max-w-3xl mx-auto mb-8 p-4 rounded-lg ${messageClass}`}>
           <p className="text-center font-medium">{message}</p>
         </div>
       )}
