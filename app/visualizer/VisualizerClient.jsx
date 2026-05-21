@@ -595,7 +595,7 @@ export default function VisualizerClient({ initialSections }) {
           {/* page heading + search */}
           <div className="text-center mb-14">
             <h1
-              className="text-[2.6rem] sm:text-[3.4rem] lg:text-[4rem] font-extrabold leading-[1.08] tracking-tighter text-surface-900 dark:text-surface-50 mb-4"
+              className="text-[2.6rem] sm:text-[3.4rem] lg:text-[4rem] font-black leading-[1.08] tracking-tighter text-surface-900 dark:text-surface-50 mb-4"
             >
               Algorithm <span className="text-primary">Visualizer</span>
             </h1>
