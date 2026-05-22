@@ -3,10 +3,28 @@ import React, { useState, useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import ResetButton from "@/app/components/ui/resetButton";
 import GoButton from "@/app/components/ui/goButton";
+import {
+  saveToStorage,
+  loadFromStorage,
+  removeFromStorage,
+} from "@/utils/storage";
+
+const getFontSize = (value) => {
+  const len = String(value).length;
+  if (len <= 2) return "text-lg";
+  if (len === 3) return "text-sm";
+  return "text-xs";
+};
 
 const BinarySearch = () => {
-  const [arrayElements, setArrayElements] = useState("");
-  const [target, setTarget] = useState("");
+  const [arrayElements, setArrayElements] = useState(() =>
+    loadFromStorage("binary-array-elements", "")
+  );
+
+  const [target, setTarget] = useState(() =>
+    loadFromStorage("binary-target", "")
+  );
+
   const [array, setArray] = useState([]);
   const [i, setI] = useState(-1);
   const [j, setJ] = useState(-1);
@@ -14,30 +32,64 @@ const BinarySearch = () => {
   const [foundIndex, setFoundIndex] = useState(-1);
   const [isAnimating, setIsAnimating] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState(""); // FIX: "success" | "error" | "warning"
-  const [speed, setSpeed] = useState(1);
-  const speedRef = useRef(1);
+  const [messageType, setMessageType] = useState("");
+
+  const [speed, setSpeed] = useState(() =>
+    loadFromStorage("binary-speed", 1)
+  );
+
+  const speedRef = useRef(speed);
+
   const animationRef = useRef(null);
-  const searchStateRef = useRef({ l: 0, h: 0, arr: [], targetValue: 0 });
+
+  const searchStateRef = useRef({
+    l: 0,
+    h: 0,
+    arr: [],
+    targetValue: 0,
+  });
+
   const formRef = useRef(null);
   const elementRefs = useRef([]);
 
+  // Persist state
+  useEffect(() => {
+    saveToStorage("binary-array-elements", arrayElements);
+  }, [arrayElements]);
+
+  useEffect(() => {
+    saveToStorage("binary-target", target);
+  }, [target]);
+
+  useEffect(() => {
+    saveToStorage("binary-speed", speed);
+    speedRef.current = speed;
+  }, [speed]);
+
   const handleReset = () => {
     clearTimeout(animationRef.current);
+
+    removeFromStorage("binary-array-elements");
+    removeFromStorage("binary-target");
+    removeFromStorage("binary-speed");
+
     setArray([]);
     setI(-1);
     setJ(-1);
     setMid(-1);
     setFoundIndex(-1);
     setMessage("");
-    setMessageType(""); // FIX: reset message type
+    setMessageType("");
     setIsAnimating(false);
+
     setArrayElements("");
     setTarget("");
+    setSpeed(1);
+
     if (formRef.current) {
       formRef.current.reset();
     }
-    // Reset GSAP animations
+
     elementRefs.current.forEach((ref) => {
       gsap.to(ref, {
         backgroundColor: "#E5E7EB",
@@ -49,48 +101,71 @@ const BinarySearch = () => {
 
   const generateRandomArray = () => {
     if (isAnimating) return;
+
     const size = Math.floor(Math.random() * 4) + 2;
+
     const elements = Array.from({ length: size }, () =>
       Math.floor(Math.random() * 100)
     ).sort((a, b) => a - b);
+
     setArrayElements(elements.join(", "));
   };
 
   const handleGo = (e) => {
     e.preventDefault();
-    handleReset();
+
+    clearTimeout(animationRef.current);
+
+    setArray([]);
+    setI(-1);
+    setJ(-1);
+    setMid(-1);
+    setFoundIndex(-1);
+    setMessage("");
+    setMessageType("");
+    setIsAnimating(false);
 
     if (!arrayElements || !target) {
       setMessage("Please fill in all fields.");
-      setMessageType("warning"); // FIX: validation error → warning
-      return;
-    }
-
-    const rawElements = arrayElements.split(",").map((el) => el.trim());
-
-    // FIX: detect decimal/float inputs before parsing and warn the user
-    const hasDecimals = rawElements.some((el) => el.includes("."));
-    if (hasDecimals) {
-      setMessage("Only integers are supported. Please remove decimal values.");
       setMessageType("warning");
       return;
     }
 
-    const elements = rawElements.map((el) => parseInt(el));
+    const rawElements = arrayElements
+      .split(",")
+      .map((el) => el.trim());
+
+    const hasDecimals = rawElements.some((el) =>
+      el.includes(".")
+    );
+
+    if (hasDecimals) {
+      setMessage(
+        "Only integers are supported. Please remove decimal values."
+      );
+      setMessageType("warning");
+      return;
+    }
+
+    const elements = rawElements.map((el) =>
+      parseInt(el)
+    );
+
     const targetValue = parseInt(target);
 
     if (elements.some(isNaN) || isNaN(targetValue)) {
       setMessage("Invalid array elements or target.");
-      setMessageType("warning"); // FIX: validation error → warning
+      setMessageType("warning");
       return;
     }
 
     const isSorted = elements.every(
       (el, idx) => idx === 0 || el >= elements[idx - 1]
     );
+
     if (!isSorted) {
       setMessage("Array must be sorted in ascending order.");
-      setMessageType("warning"); // FIX: validation error → warning
+      setMessageType("warning");
       return;
     }
 
@@ -107,24 +182,30 @@ const BinarySearch = () => {
       l: 0,
       h: elements.length - 1,
       arr: elements,
-      targetValue: targetValue,
+      targetValue,
     };
 
     animateBinarySearch();
   };
 
   const animateBinarySearch = () => {
-    const { l, h, arr, targetValue } = searchStateRef.current;
+    const { l, h, arr, targetValue } =
+      searchStateRef.current;
+
     const delay = 1500 / speedRef.current;
 
     if (l > h) {
-      setMessage(`Element ${targetValue} not found in the array.`);
-      setMessageType("error"); // FIX: search result "not found" → red
+      setMessage(
+        `Element ${targetValue} not found in the array.`
+      );
+
+      setMessageType("error");
       setIsAnimating(false);
       return;
     }
 
     const m = Math.floor((l + h) / 2);
+
     setI(l);
     setJ(h);
     setMid(m);
@@ -154,9 +235,14 @@ const BinarySearch = () => {
     animationRef.current = setTimeout(() => {
       if (arr[m] === targetValue) {
         setFoundIndex(m);
-        setMessage(`Element ${targetValue} found at index ${m}!`);
-        setMessageType("success"); // FIX: found → green
+
+        setMessage(
+          `Element ${targetValue} found at index ${m}!`
+        );
+
+        setMessageType("success");
         setIsAnimating(false);
+
         gsap.to(elementRefs.current[m], {
           backgroundColor: "#22C55E",
           borderColor: "#15803D",
@@ -173,19 +259,11 @@ const BinarySearch = () => {
   };
 
   const increaseSpeed = () => {
-    setSpeed((prev) => {
-      const next = Math.min(prev + 0.5, 5);
-      speedRef.current = next;
-      return next;
-    });
+    setSpeed((prev) => Math.min(prev + 0.5, 5));
   };
 
   const decreaseSpeed = () => {
-    setSpeed((prev) => {
-      const next = Math.max(prev - 0.5, 0.5);
-      speedRef.current = next;
-      return next;
-    });
+    setSpeed((prev) => Math.max(prev - 0.5, 0.5));
   };
 
   useEffect(() => {
@@ -194,7 +272,6 @@ const BinarySearch = () => {
     };
   }, []);
 
-  // FIX: derive message box classes from messageType instead of foundIndex
   const messageClass =
     messageType === "success"
       ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
@@ -221,16 +298,20 @@ const BinarySearch = () => {
           >
             Sorted Array Elements (comma-separated)
           </label>
+
           <div className="flex gap-2">
             <input
               type="text"
               id="arrayElements"
               value={arrayElements}
-              onChange={(e) => setArrayElements(e.target.value)}
-              className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-[#a435f0] focus:outline-none focus:ring-2 focus:ring-[#a435f0]/30 dark:focus:ring-[#a435f0]/30 transition duration-300"
+              onChange={(e) =>
+                setArrayElements(e.target.value)
+              }
+              className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-[#a435f0] focus:outline-none focus:ring-2 focus:ring-[#a435f0]/30 transition duration-300"
               placeholder="e.g., 1, 3, 4, 6, 8"
               disabled={isAnimating}
             />
+
             <button
               type="button"
               onClick={generateRandomArray}
@@ -241,6 +322,7 @@ const BinarySearch = () => {
             </button>
           </div>
         </div>
+
         <div className="mb-4">
           <label
             className="block text-gray-700 dark:text-gray-300 mb-2"
@@ -254,8 +336,10 @@ const BinarySearch = () => {
               type="number"
               id="target"
               value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              className="w-full sm:max-w-xs p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-[#a435f0] focus:outline-none focus:ring-2 focus:ring-[#a435f0]/30 dark:focus:ring-[#a435f0]/30 transition duration-300"
+              onChange={(e) =>
+                setTarget(e.target.value)
+              }
+              className="w-full sm:max-w-xs p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-[#a435f0] focus:outline-none focus:ring-2 focus:ring-[#a435f0]/30 transition duration-300"
               placeholder="eg. 4"
               disabled={isAnimating}
             />
@@ -266,10 +350,15 @@ const BinarySearch = () => {
                 isAnimating={isAnimating}
                 disabled={isAnimating}
               />
-              <ResetButton onReset={handleReset} isAnimating={isAnimating} />
+
+              <ResetButton
+                onReset={handleReset}
+                isAnimating={isAnimating}
+              />
             </div>
           </div>
         </div>
+
         {isAnimating && (
           <div className="flex items-center justify-between mb-4">
             <button
@@ -280,9 +369,11 @@ const BinarySearch = () => {
             >
               -
             </button>
+
             <span className="text-gray-700 dark:text-gray-300">
               Speed: {speed}x
             </span>
+
             <button
               type="button"
               onClick={increaseSpeed}
@@ -296,8 +387,12 @@ const BinarySearch = () => {
       </form>
 
       {message && (
-        <div className={`max-w-3xl mx-auto mb-8 p-4 rounded-lg ${messageClass}`}>
-          <p className="text-center font-medium">{message}</p>
+        <div
+          className={`max-w-3xl mx-auto mb-8 p-4 rounded-lg ${messageClass}`}
+        >
+          <p className="text-center font-medium">
+            {message}
+          </p>
         </div>
       )}
 
@@ -306,18 +401,23 @@ const BinarySearch = () => {
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
             Array Visualization
           </h2>
+
           <div className="flex flex-wrap gap-4 justify-center">
             {array.map((element, index) => {
               const labels = [];
+
               if (index === i) labels.push("i");
               if (index === mid) labels.push("Mid");
               if (index === j) labels.push("j");
 
               return (
-                <div key={index} className="flex flex-col items-center">
+                <div
+                  key={index}
+                  className="flex flex-col items-center"
+                >
                   <div
                     ref={(el) => (elementRefs.current[index] = el)}
-                    className={`w-16 h-16 flex items-center justify-center rounded-lg border-2 transition-all duration-300 text-lg font-medium ${
+                    className={`w-16 h-16 flex items-center justify-center rounded-lg border-2 transition-all duration-300 ${getFontSize(element)} font-medium ${
                       index === foundIndex
                         ? "bg-green-500 dark:bg-green-600 border-green-700 dark:border-green-400 text-gray-800 dark:text-white"
                         : index === mid
@@ -329,6 +429,7 @@ const BinarySearch = () => {
                   >
                     {element}
                   </div>
+
                   <div className="mt-1 text-sm text-gray-600 dark:text-gray-400 text-center">
                     {labels.map((label, idx) => (
                       <div key={idx}>{label}</div>
@@ -337,25 +438,6 @@ const BinarySearch = () => {
                 </div>
               );
             })}
-          </div>
-
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-yellow-500 dark:bg-yellow-600 rounded mr-2"></div>
-              <span className="text-sm">Middle Element</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-green-500 dark:bg-green-600 rounded mr-2"></div>
-              <span className="text-sm">Found Element</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-blue-300 dark:bg-blue-700 rounded mr-2"></div>
-              <span className="text-sm">Search Range</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-gray-200 dark:bg-gray-900 rounded mr-2"></div>
-              <span className="text-sm">Unchecked Elements</span>
-            </div>
           </div>
         </div>
       )}

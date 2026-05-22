@@ -12,3 +12,10 @@ REVIEW_INBOX_EMAIL=Optional: fixed inbox for review emails (defaults to EMAIL_US
 
 # AI Chatbot (AlgoBuddy Assistant)
 OPENAI_API_KEY=Your OpenAI or OpenRouter API Key
+# Upstash Redis — required in production to enforce rate limits across all
+# serverless instances. Create a free database at https://console.upstash.com
+# and copy the REST URL and token from the database dashboard.
+# Without these, rate limiting falls back to a per-process in-memory store
+# which is bypassed in serverless deployments (multiple Lambda instances).
+UPSTASH_REDIS_REST_URL=https://your-database.upstash.io
+UPSTASH_REDIS_REST_TOKEN=Your Upstash Redis REST token

@@ -4,6 +4,13 @@ import { gsap } from "gsap";
 import ArrayGenerator from "@/app/components/ui/randomArray";
 import CustomArrayInput from "@/app/components/ui/customArrayInput";
 
+const getFontSize = (value) => {
+  const len = String(value).length;
+  if (len <= 2) return "text-lg";
+  if (len === 3) return "text-sm";
+  return "text-xs";
+};
+
 const QuickSortVisualizer = () => {
   const [array, setArray] = useState([]);
   const [sorting, setSorting] = useState(false);
@@ -20,6 +27,8 @@ const QuickSortVisualizer = () => {
     partitions: [],
   });
   const animationRef = useRef(null);
+  const isSortingRef = useRef(false);
+  const resolveRef = useRef(null);
 
   // Reset all stats and state
   const resetStats = () => {
@@ -37,6 +46,13 @@ const QuickSortVisualizer = () => {
       clearTimeout(animationRef.current);
     }
   };
+
+  // Helper: cancellable delay
+  const cancellableDelay = (ms) =>
+    new Promise((resolve) => {
+      resolveRef.current = resolve;
+      animationRef.current = setTimeout(resolve, ms);
+    });
 
   // Partition function for Quick Sort
   const partition = async (arr, low, high) => {
@@ -58,9 +74,8 @@ const QuickSortVisualizer = () => {
       }));
 
       setComparisons((prev) => prev + 1);
-      await new Promise(
-        (resolve) => (animationRef.current = setTimeout(resolve, 1000 / speed))
-      );
+      await cancellableDelay(1000 / speed);
+      if (!isSortingRef.current) return -1;
 
       if (arr[j] < pivot) {
         i++;
@@ -76,10 +91,8 @@ const QuickSortVisualizer = () => {
             { scale: 1.1, opacity: 1, duration: 0.3, stagger: 0.05 }
           );
         }
-        await new Promise(
-          (resolve) =>
-            (animationRef.current = setTimeout(resolve, 1000 / speed))
-        );
+        await cancellableDelay(1000 / speed);
+        if (!isSortingRef.current) return -1;
       }
     }
 
@@ -87,17 +100,16 @@ const QuickSortVisualizer = () => {
     setSwaps((prev) => prev + 1);
     setArray([...arr]);
     // GSAP animation after swap/visual update
-    const bars = document.querySelectorAll(".array-bar");
-    if (bars.length > 0) {
+    const bars2 = document.querySelectorAll(".array-bar");
+    if (bars2.length > 0) {
       gsap.fromTo(
-        bars,
+        bars2,
         { scale: 1, opacity: 0.5 },
         { scale: 1.1, opacity: 1, duration: 0.3, stagger: 0.05 }
       );
     }
-    await new Promise(
-      (resolve) => (animationRef.current = setTimeout(resolve, 1000 / speed))
-    );
+    await cancellableDelay(1000 / speed);
+    if (!isSortingRef.current) return -1;
 
     return i + 1;
   };
@@ -106,6 +118,7 @@ const QuickSortVisualizer = () => {
   const quickSort = async () => {
     if (sorted || sorting || array.length === 0) return;
 
+    isSortingRef.current = true;
     setSorting(true);
     let arr = [...array];
     let stack = [];
@@ -125,6 +138,7 @@ const QuickSortVisualizer = () => {
         }));
 
         const pi = await partition(arr, low, high);
+        if (!isSortingRef.current) return;
 
         setCurrentIndices((prev) => ({
           ...prev,
@@ -139,10 +153,8 @@ const QuickSortVisualizer = () => {
         stack.push({ low: pi + 1, high });
         stack.push({ low, high: pi - 1 });
 
-        await new Promise(
-          (resolve) =>
-            (animationRef.current = setTimeout(resolve, 1000 / speed))
-        );
+        await cancellableDelay(1000 / speed);
+        if (!isSortingRef.current) return;
 
         // Remove completed partition
         setCurrentIndices((prev) => ({
@@ -155,6 +167,7 @@ const QuickSortVisualizer = () => {
     }
 
     setArray([...arr]);
+    isSortingRef.current = false;
     setSorting(false);
     setSorted(true);
     setCurrentIndices({
@@ -169,6 +182,12 @@ const QuickSortVisualizer = () => {
 
   // Reset everything
   const reset = () => {
+    // Unblock any suspended async loop immediately
+    isSortingRef.current = false;
+    if (resolveRef.current) {
+      resolveRef.current();
+      resolveRef.current = null;
+    }
     if (animationRef.current) {
       clearTimeout(animationRef.current);
     }
@@ -272,7 +291,7 @@ const QuickSortVisualizer = () => {
                 disabled={sorting}
               />
               <CustomArrayInput
-                onSubmit={(newArray) => {
+                onUseCustomArray={(newArray) => {
                   setArray(newArray);
                   setSorted(false);
                   resetStats();
@@ -343,7 +362,7 @@ const QuickSortVisualizer = () => {
                 return (
                   <div key={index} className="flex flex-col items-center">
                     <div
-                      className={`array-bar w-16 h-16 flex items-center justify-center rounded-lg border-2 transition-all duration-300 text-lg font-medium
+                      className={`array-bar w-16 h-16 flex items-center justify-center rounded-lg border-2 transition-all duration-300 ${getFontSize(value)} font-medium
                             ${
                               isPivot
                                 ? "bg-red-400 dark:bg-red-600 border-red-600 dark:border-red-400"
