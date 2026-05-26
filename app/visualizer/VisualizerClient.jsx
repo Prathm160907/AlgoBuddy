@@ -66,6 +66,16 @@ const DS_THEME = {
       </svg>
     ),
   },
+  HashMap: {
+    color: "#db2777",
+    bg: "#fdf2f8",
+    border: "#fbcfe8",
+    icon: (c) => (
+      <svg viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
+        <path d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+      </svg>
+    ),
+  },
 };
 
 const getTheme = (t) =>
@@ -207,6 +217,40 @@ function GraphMiniViz({ color }) {
   );
 }
 
+function HashMapMiniViz({ color }) {
+  const buckets = [
+    { key: "k1", val: "v1" },
+    { key: null, val: null },
+    { key: "k2", val: "v2" },
+    { key: "k3", val: "v3" }
+  ];
+  return (
+    <div className="flex gap-2 items-center justify-center h-[48px]">
+      {buckets.map((b, i) => (
+        <div
+          key={i}
+          className="flex flex-col items-center justify-center border rounded p-1 w-14 h-10 transition-all duration-300"
+          style={{
+            background: b.key ? color + "15" : "transparent",
+            borderColor: b.key ? color + "50" : color + "20",
+          }}
+        >
+          <span className="text-[8px] font-mono" style={{ color: b.key ? color : color + "50" }}>
+            [{i}]
+          </span>
+          {b.key ? (
+            <span className="text-[9px] font-bold" style={{ color }}>
+              {b.key}:{b.val}
+            </span>
+          ) : (
+            <span className="text-[9px] font-bold text-gray-300 dark:text-gray-600">∅</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const MINI_VIZ = {
   Array: ArrayMiniViz,
   Stack: StackMiniViz,
@@ -214,6 +258,7 @@ const MINI_VIZ = {
   "Linked List": LinkedListMiniViz,
   Tree: TreeMiniViz,
   Graph: GraphMiniViz,
+  HashMap: HashMapMiniViz,
 };
 
 /* ═══════════════════════════════════════
@@ -563,6 +608,7 @@ export default function VisualizerClient({ initialSections }) {
         .dark [data-theme-card="Linked List"] { background: #2b1a08 !important; border-color: #92400e !important; }
         .dark [data-theme-card="Tree"] { background: #1a0e2d !important; border-color: #5b21b6 !important; }
         .dark [data-theme-card="Graph"] { background: #2c1215 !important; border-color: #991b1b !important; }
+        .dark [data-theme-card="HashMap"] { background: #2e1022 !important; border-color: #9d174d !important; }
 
         /* Dark mode solid card headers & icons */
         .dark [data-theme-header="Custom Code"] { background: #3e4143 !important; border-color: #4b5563 !important; }
@@ -572,6 +618,7 @@ export default function VisualizerClient({ initialSections }) {
         .dark [data-theme-header="Linked List"] { background: #3d240a !important; border-color: #92400e !important; }
         .dark [data-theme-header="Tree"] { background: #23133d !important; border-color: #5b21b6 !important; }
         .dark [data-theme-header="Graph"] { background: #3d171b !important; border-color: #991b1b !important; }
+        .dark [data-theme-header="HashMap"] { background: #3b132b !important; border-color: #9d174d !important; }
 
         /* Mini Viz Overrides for Dark Mode (Rich saturated colors) */
         .dark [data-theme-card="Array"] .mini-viz-inactive { background: #5b21b6 !important; }
@@ -586,26 +633,29 @@ export default function VisualizerClient({ initialSections }) {
       
       {/* ═══════ CONTENT AREA ═══════ */}
       <section
-        className="px-5 pt-28 pb-20 min-h-screen bg-gradient-to-b from-white via-surface-50 to-purple-50/40 dark:bg-none dark:bg-[#1c1d1f] transition-colors duration-300"
+        className="px-5 pt-12 pb-20 min-h-screen bg-gradient-to-b from-white via-surface-50 to-purple-50/40 dark:bg-none dark:bg-[#1c1d1f] transition-colors duration-300"
       >
         <div className="max-w-[1100px] mx-auto">
           {/* page heading + search */}
-          <div className="text-center mb-14">
-            <h1 className="text-[2.6rem] sm:text-[3.4rem] lg:text-[4rem] font-black leading-[1.08] tracking-tighter text-surface-900 dark:text-white mb-4 transition-colors">
-              Algorithm <span className="text-primary">Visualizer</span>
-            </h1>
-            <p className="text-[1.1rem] text-surface-600 dark:text-surface-400 leading-relaxed max-w-[480px] mx-auto transition-colors">
-              Pick any data structure, tap an algorithm, and watch it run step
-              by step. Learning DSA has never been this fun.
-            </p>
+          {!activeSection && !search.trim() && (
+            <div className="text-center mb-14">
+              <h1 className="text-[2.6rem] sm:text-[3.4rem] lg:text-[4rem] font-black leading-[1.08] tracking-tighter text-surface-900 dark:text-white mb-4 transition-colors">
+                Algorithm <span className="text-primary">Visualizer</span>
+              </h1>
+              <p className="text-[1.1rem] text-surface-600 dark:text-surface-400 leading-relaxed max-w-[480px] mx-auto transition-colors">
+                Pick any data structure, tap an algorithm, and watch it run step
+                by step. Learning DSA has never been this fun.
+              </p>
+            </div>
+          )}
 
-            {/* Search Bar */}
-            <div className="relative max-w-[480px] mx-auto mt-8">
-              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9ca3af]" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+          {/* Search Bar */}
+          <div className="relative max-w-[480px] mx-auto mt-8 mb-14">
+            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9ca3af]" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search algorithms and topics..."
                 className="w-full h-[52px] pl-12 pr-4 rounded-2xl border border-[#e5e7eb] dark:border-[#333] bg-white dark:bg-[#1a1a1a] text-[#1a1a1a] dark:text-white placeholder-[#9ca3af] text-[15px] shadow-sm focus:outline-none focus:border-[#a435f0] focus:ring-2 focus:ring-[#a435f0]/20 transition-all"
               />
@@ -618,7 +668,6 @@ export default function VisualizerClient({ initialSections }) {
                 </button>
               )}
             </div>
-          </div>
 
           <AnimatePresence mode="wait">
             {search.trim() ? (

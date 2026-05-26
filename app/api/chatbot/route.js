@@ -48,8 +48,45 @@ export async function POST(req) {
     if (!authData?.user) {
       return Response.json({ error: "Unauthorized." }, { status: 401 });
     }
+    if (typeof msg.content !== "string") {
+      return `Message content at index ${i} must be a string.`;
+    }
+    if (msg.content.length > MAX_PER_MESSAGE_LENGTH) {
+      return `Message at index ${i} exceeds ${MAX_PER_MESSAGE_LENGTH} characters.`;
+    }
+  }
 
-    // 1. Parse Request Body
+  const totalChars = messages.reduce((sum, message) => sum + message.content.length, 0);
+  if (totalChars > MAX_TOTAL_CHARS) {
+    return `Total message content exceeds ${MAX_TOTAL_CHARS} characters.`;
+  }
+
+  return null;
+}
+
+function createGeminiContents(messages) {
+  return [
+    {
+      role: "user",
+      parts: [{ text: SYSTEM_PROMPT }],
+    },
+    {
+      role: "model",
+      parts: [
+        {
+          text: "Understood! I am the AlgoBuddy AI Assistant, ready to help you learn DSA. What would you like to know?",
+        },
+      ],
+    },
+    ...messages.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    })),
+  ];
+}
+
+export async function POST(req) {
+  try {
     let body;
     try {
       body = await req.json();
@@ -80,40 +117,14 @@ export async function POST(req) {
       return Response.json({ error: "Invalid or missing 'messages' array." }, { status: 400 });
     }
 
-    if (messages.length === 0 || messages.length > MAX_MESSAGES_PER_REQUEST) {
-      return Response.json(
-        { error: `Messages count must be between 1 and ${MAX_MESSAGES_PER_REQUEST}.` },
-        { status: 400 }
-      );
+    const ip = getClientIp(req.headers);
+    if (!captchaToken) {
+      return Response.json({ error: "Captcha token missing." }, { status: 403 });
     }
 
-    for (const [i, msg] of messages.entries()) {
-      if (!msg || typeof msg !== "object") {
-        return Response.json({ error: `Message at index ${i} is not a valid object.` }, { status: 400 });
-      }
-      if (!VALID_ROLES.has(msg.role)) {
-        return Response.json(
-          { error: `Invalid role "${msg.role}" at index ${i}. Must be "user" or "assistant".` },
-          { status: 400 }
-        );
-      }
-      if (typeof msg.content !== "string") {
-        return Response.json({ error: `Message content at index ${i} must be a string.` }, { status: 400 });
-      }
-      if (msg.content.length > MAX_PER_MESSAGE_LENGTH) {
-        return Response.json(
-          { error: `Message at index ${i} exceeds ${MAX_PER_MESSAGE_LENGTH} characters.` },
-          { status: 400 }
-        );
-      }
-    }
-
-    const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
-    if (totalChars > MAX_TOTAL_CHARS) {
-      return Response.json(
-        { error: `Total message content exceeds ${MAX_TOTAL_CHARS} characters.` },
-        { status: 400 }
-      );
+    const captcha = await verifyTurnstile(String(captchaToken), { ip });
+    if (!captcha.ok) {
+      return Response.json({ error: captcha.error }, { status: 403 });
     }
 
     // 4. Rate Limiting Check
@@ -125,7 +136,29 @@ export async function POST(req) {
       );
     }
 
-    // 4. Validate Gemini API Key
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return Response.json({ error: "Auth server is not configured." }, { status: 500 });
+    }
+
+    const cookieStore = await cookies();
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    });
+
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) {
+      return Response.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       return Response.json(
         { error: "Gemini API Key is missing. Please add GEMINI_API_KEY to your .env.local file." },
@@ -133,30 +166,13 @@ export async function POST(req) {
       );
     }
 
-    // 5. Convert messages to Gemini format
-    const geminiContents = [
-      {
-        role: "user",
-        parts: [{ text: SYSTEM_PROMPT }],
-      },
-      {
-        role: "model",
-        parts: [{ text: "Understood! I am the AlgoBuddy AI Assistant, ready to help you learn DSA. What would you like to know?" }],
-      },
-      ...messages.map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
-    ];
-
-    // 6. Call Gemini API
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: geminiContents,
+          contents: createGeminiContents(messages),
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 1000,
@@ -177,14 +193,12 @@ export async function POST(req) {
       throw new Error("No response received from Gemini API.");
     }
 
-    // 7. Return in the same format the frontend expects
     return Response.json({
       message: {
         role: "assistant",
         content: replyText,
       },
     });
-
   } catch (error) {
     console.error("Chatbot API error:", error);
     return Response.json(
