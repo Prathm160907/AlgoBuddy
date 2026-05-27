@@ -3,7 +3,6 @@ import Script from "next/script";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { UserProvider } from "@/app/contexts/UserContext";
 import ClientLayoutWrapper from "@/app/components/ui/ClientLayoutWrapper";
-import CustomCursor from "./components/CustomCursor"; // 1. CustomCursor component import kiya
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
@@ -114,9 +113,6 @@ export default async function RootLayout({ children }) {
         </a>
         <UserProvider>
           <ClientLayoutWrapper>
-            {/* 2. CustomCursor ko main content container ke upar inject kiya */}
-            <CustomCursor />
-            
             <div id="main-content">{children}</div>
           </ClientLayoutWrapper>
         </UserProvider>
